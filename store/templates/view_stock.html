@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Stock - General Store Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <div class="nav-brand">
+            <span>🏪 General Store</span>
+        </div>
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+    </nav>
+    
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>🏪 General Store</h2>
+                <p>Stock Management</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('add_product') }}" class="nav-item">
+                    <span class="nav-icon">➕</span>
+                    <span>Add Product</span>
+                </a>
+                <a href="{{ url_for('view_stock') }}" class="nav-item active">
+                    <span class="nav-icon">📦</span>
+                    <span>View Stock</span>
+                </a>
+                <a href="{{ url_for('expiry_alert') }}" class="nav-item">
+                    <span class="nav-icon">⚠️</span>
+                    <span>Expiry Alerts</span>
+                </a>
+                <a href="{{ url_for('pending_suppliers') }}" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span>Pending Payments</span>
+                </a>
+                <a href="{{ url_for('logout') }}" class="nav-item logout">
+                    <span class="nav-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Stock Management</h1>
+                <p>View and manage your inventory</p>
+            </header>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Search and Filter Section -->
+            <div class="search-filter-section">
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="Search by product name or supplier..." onkeyup="filterTable()">
+                    <button class="btn btn-secondary" onclick="clearSearch()">Clear</button>
+                </div>
+                
+                <div class="filter-buttons">
+                    <button class="btn btn-filter" onclick="filterByExpiry()">Show Expiry Items</button>
+                    <button class="btn btn-filter" onclick="filterByPending()">Show Pending Payments</button>
+                    <button class="btn btn-filter" onclick="showAll()">Show All</button>
+                </div>
+            </div>
+            
+            <!-- Stock Table -->
+            <div class="table-container">
+                <table class="stock-table" id="stockTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(0)">Product Name ↕</th>
+                            <th onclick="sortTable(1)">Category ↕</th>
+                            <th onclick="sortTable(2)">Quantity ↕</th>
+                            <th onclick="sortTable(3)">Unit ↕</th>
+                            <th onclick="sortTable(4)">Purchase Price ↕</th>
+                            <th onclick="sortTable(5)">Total Amount ↕</th>
+                            <th onclick="sortTable(6)">Supplier ↕</th>
+                            <th onclick="sortTable(7)">Purchase Date ↕</th>
+                            <th onclick="sortTable(8)">Expiry ↕</th>
+                            <th onclick="sortTable(9)">Payment ↕</th>
+                            <th onclick="sortTable(10)">Pending ↕</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in stock_items %}
+                        <tr class="{% if item.expiry_status == 'expired' %}expired-item{% elif item.expiry_status == 'near_expiry' %}near-expiry-item{% endif %} {% if item.payment_status == 'PENDING' %}pending-payment{% endif %}">
+                            <td>{{ item.product_name }}</td>
+                            <td>{{ item.category }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.unit }}</td>
+                            <td>₹{{ "%.2f"|format(item.purchase_price) }}</td>
+                            <td>₹{{ "%.2f"|format(item.total_amount) }}</td>
+                            <td>{{ item.supplier_name }}</td>
+                            <td>{{ item.purchase_date }}</td>
+                            <td>
+                                {% if item.has_expiry == 'YES' %}
+                                    {% if item.expiry_date %}
+                                        <span class="expiry-date {% if item.expiry_status == 'expired' %}expired{% elif item.expiry_status == 'near_expiry' %}near-expiry{% else %}fresh{% endif %}">
+                                            {{ item.expiry_date }}
+                                        </span>
+                                    {% else %}
+                                        <span class="no-expiry">Not Set</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="no-expiry">No Expiry</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="payment-status {% if item.payment_status == 'PAID' %}paid{% else %}pending{% endif %}">
+                                    {{ item.payment_status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if item.payment_status == 'PENDING' %}
+                                    <span class="pending-amount">₹{{ "%.2f"|format(item.pending_amount) }}</span>
+                                {% else %}
+                                    <span class="no-pending">₹0.00</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('edit_product', id=item.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                    <a href="{{ url_for('delete_product', id=item.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this product?')">Delete</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                {% if stock_items|length == 0 %}
+                <div class="empty-state">
+                    <div class="empty-icon">📦</div>
+                    <h3>No Stock Items</h3>
+                    <p>You haven't added any products to your stock yet.</p>
+                    <a href="{{ url_for('add_product') }}" class="btn btn-primary">Add Your First Product</a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Legend -->
+            <div class="legend">
+                <h3>Color Legend</h3>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="legend-color expired"></span>
+                        <span>Expired Items</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color near-expiry"></span>
+                        <span>Near Expiry (≤7 days)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color pending"></span>
+                        <span>Pending Payment</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color paid"></span>
+                        <span>Paid</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        
+        mobileMenuBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+        });
+        
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+        
+        // Search functionality
+        function filterTable() {
+            const input = document.getElementById('searchInput');
+            const filter = input.value.toUpperCase();
+            const table = document.getElementById('stockTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                const productName = rows[i].getElementsByTagName('td')[0].textContent.toUpperCase();
+                const supplierName = rows[i].getElementsByTagName('td')[6].textContent.toUpperCase();
+                
+                if (productName.includes(filter) || supplierName.includes(filter)) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+        
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            filterTable();
+        }
+        
+        // Filter functions
+        function filterByExpiry() {
+            const table = document.getElementById('stockTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                const expiryCell = rows[i].getElementsByClassName('expired')[0] || 
+                                 rows[i].getElementsByClassName('near-expiry')[0];
+                
+                if (expiryCell) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+        
+        function filterByPending() {
+            const table = document.getElementById('stockTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                const pendingCell = rows[i].getElementsByClassName('pending')[0];
+                
+                if (pendingCell) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+        
+        function showAll() {
+            const table = document.getElementById('stockTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                rows[i].style.display = '';
+            }
+        }
+        
+        // Sort table functionality
+        let sortDirection = {};
+        
+        function sortTable(columnIndex) {
+            const table = document.getElementById('stockTable');
+            const tbody = table.getElementsByTagName('tbody')[0];
+            const rows = Array.from(tbody.getElementsByTagName('tr'));
+            
+            // Toggle sort direction
+            sortDirection[columnIndex] = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
+            
+            rows.sort((a, b) => {
+                let aValue = a.getElementsByTagName('td')[columnIndex].textContent.trim();
+                let bValue = b.getElementsByTagName('td')[columnIndex].textContent.trim();
+                
+                // Handle numeric values
+                if (columnIndex === 2 || columnIndex === 4 || columnIndex === 5 || columnIndex === 10) {
+                    aValue = parseFloat(aValue.replace('₹', '').replace(',', '')) || 0;
+                    bValue = parseFloat(bValue.replace('₹', '').replace(',', '')) || 0;
+                }
+                
+                if (sortDirection[columnIndex] === 'asc') {
+                    return aValue > bValue ? 1 : -1;
+                } else {
+                    return aValue < bValue ? 1 : -1;
+                }
+            });
+            
+            // Reorder rows in DOM
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+</body>
+</html>

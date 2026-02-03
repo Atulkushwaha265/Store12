@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Product - General Store Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <div class="nav-brand">
+            <span>🏪 General Store</span>
+        </div>
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+    </nav>
+    
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>🏪 General Store</h2>
+                <p>Stock Management</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('add_product') }}" class="nav-item">
+                    <span class="nav-icon">➕</span>
+                    <span>Add Product</span>
+                </a>
+                <a href="{{ url_for('view_stock') }}" class="nav-item">
+                    <span class="nav-icon">📦</span>
+                    <span>View Stock</span>
+                </a>
+                <a href="{{ url_for('expiry_alert') }}" class="nav-item">
+                    <span class="nav-icon">⚠️</span>
+                    <span>Expiry Alerts</span>
+                </a>
+                <a href="{{ url_for('pending_suppliers') }}" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span>Pending Payments</span>
+                </a>
+                <a href="{{ url_for('logout') }}" class="nav-item logout">
+                    <span class="nav-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Edit Product</h1>
+                <p>Update product information</p>
+            </header>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div class="form-container">
+                <form method="POST" class="product-form">
+                    <div class="form-section">
+                        <h3>Basic Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="product_name">Product Name *</label>
+                                <input type="text" id="product_name" name="product_name" required value="{{ product.product_name }}" placeholder="Enter product name">
+                            </div>
+                            <div class="form-group">
+                                <label for="category">Category *</label>
+                                <select id="category" name="category" required>
+                                    <option value="">Select Category</option>
+                                    <option value="Groceries" {% if product.category == 'Groceries' %}selected{% endif %}>Groceries</option>
+                                    <option value="Beverages" {% if product.category == 'Beverages' %}selected{% endif %}>Beverages</option>
+                                    <option value="Dairy" {% if product.category == 'Dairy' %}selected{% endif %}>Dairy</option>
+                                    <option value="Bakery" {% if product.category == 'Bakery' %}selected{% endif %}>Bakery</option>
+                                    <option value="Snacks" {% if product.category == 'Snacks' %}selected{% endif %}>Snacks</option>
+                                    <option value="Personal Care" {% if product.category == 'Personal Care' %}selected{% endif %}>Personal Care</option>
+                                    <option value="Household" {% if product.category == 'Household' %}selected{% endif %}>Household</option>
+                                    <option value="Other" {% if product.category == 'Other' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="quantity">Quantity *</label>
+                                <input type="number" id="quantity" name="quantity" required min="1" value="{{ product.quantity }}" placeholder="Enter quantity">
+                            </div>
+                            <div class="form-group">
+                                <label for="unit">Unit *</label>
+                                <select id="unit" name="unit" required>
+                                    <option value="">Select Unit</option>
+                                    <option value="Pieces" {% if product.unit == 'Pieces' %}selected{% endif %}>Pieces</option>
+                                    <option value="Kg" {% if product.unit == 'Kg' %}selected{% endif %}>Kg</option>
+                                    <option value="Grams" {% if product.unit == 'Grams' %}selected{% endif %}>Grams</option>
+                                    <option value="Liters" {% if product.unit == 'Liters' %}selected{% endif %}>Liters</option>
+                                    <option value="ML" {% if product.unit == 'ML' %}selected{% endif %}>ML</option>
+                                    <option value="Boxes" {% if product.unit == 'Boxes' %}selected{% endif %}>Boxes</option>
+                                    <option value="Packets" {% if product.unit == 'Packets' %}selected{% endif %}>Packets</option>
+                                    <option value="Bottles" {% if product.unit == 'Bottles' %}selected{% endif %}>Bottles</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>Purchase Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="purchase_price">Purchase Price (per unit) *</label>
+                                <input type="number" id="purchase_price" name="purchase_price" required step="0.01" min="0" value="{{ product.purchase_price }}" placeholder="0.00">
+                            </div>
+                            <div class="form-group">
+                                <label for="total_amount">Total Amount *</label>
+                                <input type="number" id="total_amount" name="total_amount" required step="0.01" min="0" value="{{ product.total_amount }}" placeholder="0.00">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="supplier_name">Supplier Name *</label>
+                                <input type="text" id="supplier_name" name="supplier_name" required value="{{ product.supplier_name }}" placeholder="Enter supplier name">
+                            </div>
+                            <div class="form-group">
+                                <label for="purchase_date">Purchase Date *</label>
+                                <input type="date" id="purchase_date" name="purchase_date" required value="{{ product.purchase_date }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>Expiry Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="has_expiry">Has Expiry Date? *</label>
+                                <select id="has_expiry" name="has_expiry" required onchange="toggleExpiryDate()">
+                                    <option value="NO" {% if product.has_expiry == 'NO' %}selected{% endif %}>No</option>
+                                    <option value="YES" {% if product.has_expiry == 'YES' %}selected{% endif %}>Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="expiry_date_group" {% if product.has_expiry != 'YES' %}style="display: none;"{% endif %}>
+                                <label for="expiry_date">Expiry Date</label>
+                                <input type="date" id="expiry_date" name="expiry_date" {% if product.has_expiry == 'YES' and product.expiry_date %}value="{{ product.expiry_date }}"{% endif %}>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>Payment Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="payment_status">Payment Status *</label>
+                                <select id="payment_status" name="payment_status" required onchange="togglePaymentFields()">
+                                    <option value="PAID" {% if product.payment_status == 'PAID' %}selected{% endif %}>Paid</option>
+                                    <option value="PENDING" {% if product.payment_status == 'PENDING' %}selected{% endif %}>Pending</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="paid_amount">Paid Amount *</label>
+                                <input type="number" id="paid_amount" name="paid_amount" required step="0.01" min="0" value="{{ product.paid_amount }}" placeholder="0.00" onchange="calculatePendingAmount()">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="pending_amount">Pending Amount (System Calculated)</label>
+                                <input type="number" id="pending_amount" name="pending_amount" step="0.01" min="0" value="{{ product.pending_amount }}" placeholder="0.00" readonly>
+                            </div>
+                            <div class="form-group"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>Additional Information</h3>
+                        <div class="form-group">
+                            <label for="notes">Notes</label>
+                            <textarea id="notes" name="notes" rows="3" placeholder="Enter any additional notes...">{{ product.notes or '' }}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Update Product</button>
+                        <a href="{{ url_for('view_stock') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        
+        mobileMenuBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+        });
+        
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+        
+        // Toggle expiry date field
+        function toggleExpiryDate() {
+            const hasExpiry = document.getElementById('has_expiry').value;
+            const expiryDateGroup = document.getElementById('expiry_date_group');
+            
+            if (hasExpiry === 'YES') {
+                expiryDateGroup.style.display = 'block';
+                document.getElementById('expiry_date').required = true;
+            } else {
+                expiryDateGroup.style.display = 'none';
+                document.getElementById('expiry_date').required = false;
+                document.getElementById('expiry_date').value = '';
+            }
+        }
+        
+        // Calculate pending amount (system-controlled)
+        function calculatePendingAmount() {
+            const totalAmount = parseFloat(document.getElementById('total_amount').value) || 0;
+            const paidAmount = parseFloat(document.getElementById('paid_amount').value) || 0;
+            const paymentStatus = document.getElementById('payment_status').value;
+            const pendingAmountField = document.getElementById('pending_amount');
+            
+            // System always calculates pending amount
+            if (paymentStatus === 'PAID') {
+                pendingAmountField.value = '0.00';
+            } else {
+                const pendingAmount = Math.max(0, totalAmount - paidAmount);
+                pendingAmountField.value = pendingAmount.toFixed(2);
+            }
+        }
+        
+        // Toggle payment fields based on payment status
+        function togglePaymentFields() {
+            const paymentStatus = document.getElementById('payment_status').value;
+            const paidAmountField = document.getElementById('paid_amount');
+            const pendingAmountField = document.getElementById('pending_amount');
+            
+            if (paymentStatus === 'PAID') {
+                paidAmountField.readOnly = true;
+                paidAmountField.value = document.getElementById('total_amount').value || '0.00';
+            } else {
+                paidAmountField.readOnly = false;
+                if (paidAmountField.value === document.getElementById('total_amount').value) {
+                    paidAmountField.value = '0.00';
+                }
+            }
+            
+            // Always recalculate pending amount (system-controlled)
+            calculatePendingAmount();
+        }
+        
+        // Auto-calculate total amount when quantity and purchase price change
+        document.getElementById('quantity').addEventListener('input', calculateTotalAmount);
+        document.getElementById('purchase_price').addEventListener('input', calculateTotalAmount);
+        
+        function calculateTotalAmount() {
+            const quantity = parseFloat(document.getElementById('quantity').value) || 0;
+            const purchasePrice = parseFloat(document.getElementById('purchase_price').value) || 0;
+            const totalAmount = quantity * purchasePrice;
+            
+            document.getElementById('total_amount').value = totalAmount.toFixed(2);
+            calculatePendingAmount();
+        }
+        
+        // Initialize expiry date field on page load
+        toggleExpiryDate();
+        calculatePendingAmount();
+        togglePaymentFields();
+    </script>
+</body>
+</html>

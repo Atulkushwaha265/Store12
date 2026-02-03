@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Supplier Payments - General Store Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav">
+        <div class="nav-brand">
+            <span>🏪 General Store</span>
+        </div>
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+    </nav>
+    
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>🏪 General Store</h2>
+                <p>Stock Management</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('add_product') }}" class="nav-item">
+                    <span class="nav-icon">➕</span>
+                    <span>Add Product</span>
+                </a>
+                <a href="{{ url_for('view_stock') }}" class="nav-item">
+                    <span class="nav-icon">📦</span>
+                    <span>View Stock</span>
+                </a>
+                <a href="{{ url_for('expiry_alert') }}" class="nav-item">
+                    <span class="nav-icon">⚠️</span>
+                    <span>Expiry Alerts</span>
+                </a>
+                <a href="{{ url_for('pending_suppliers') }}" class="nav-item active">
+                    <span class="nav-icon">💰</span>
+                    <span>Pending Payments</span>
+                </a>
+                <a href="{{ url_for('logout') }}" class="nav-item logout">
+                    <span class="nav-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </nav>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Pending Supplier Payments</h1>
+                <p>Track and manage payments to suppliers</p>
+            </header>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Summary Cards -->
+            <div class="payment-summary">
+                <div class="summary-card pending">
+                    <div class="summary-icon">💰</div>
+                    <div class="summary-content">
+                        <h3>{{ pending_items|length }}</h3>
+                        <p>Pending Transactions</p>
+                    </div>
+                </div>
+                
+                <div class="summary-card total">
+                    <div class="summary-icon">💸</div>
+                    <div class="summary-content">
+                        <h3>₹{{ "%.2f"|format(supplier_totals.values() | sum) }}</h3>
+                        <p>Total Pending Amount</p>
+                    </div>
+                </div>
+                
+                <div class="summary-card suppliers">
+                    <div class="summary-icon">👥</div>
+                    <div class="summary-content">
+                        <h3>{{ supplier_totals|length }}</h3>
+                        <p>Suppliers with Pending</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Supplier-wise Summary -->
+            {% if supplier_totals %}
+            <section class="supplier-summary">
+                <h2>Supplier-wise Pending Totals</h2>
+                <div class="supplier-cards">
+                    {% for supplier, total in supplier_totals.items() %}
+                    <div class="supplier-card">
+                        <div class="supplier-info">
+                            <h3>{{ supplier }}</h3>
+                            <p class="supplier-total">₹{{ "%.2f"|format(total) }}</p>
+                        </div>
+                        <div class="supplier-actions">
+                            <button class="btn btn-sm btn-info" onclick="showSupplierDetails('{{ supplier }}')">View Details</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+            
+            <!-- Pending Payments Table -->
+            <section class="pending-payments">
+                <h2>All Pending Payments</h2>
+                {% if pending_items %}
+                    <div class="table-container">
+                        <table class="pending-table">
+                            <thead>
+                                <tr>
+                                    <th onclick="sortTable(0)">Product Name ↕</th>
+                                    <th onclick="sortTable(1)">Supplier ↕</th>
+                                    <th onclick="sortTable(2)">Pending Amount ↕</th>
+                                    <th onclick="sortTable(3)">Total Amount ↕</th>
+                                    <th onclick="sortTable(4)">Purchase Date ↕</th>
+                                    <th onclick="sortTable(5)">Days Pending ↕</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in pending_items %}
+                                <tr class="pending-row" data-supplier="{{ item.supplier_name }}">
+                                    <td>{{ item.product_name }}</td>
+                                    <td class="supplier-name">{{ item.supplier_name }}</td>
+                                    <td class="pending-amount">₹{{ "%.2f"|format(item.pending_amount) }}</td>
+                                    <td>₹{{ "%.2f"|format(item.total_amount) }}</td>
+                                    <td>{{ item.purchase_date }}</td>
+                                    <td class="days-pending">
+                                        {% set purchase_date = item.purchase_date %}
+                                        {% if purchase_date %}
+                                            {% set days_pending = (purchase_date|string|days_since) %}
+                                            {% if days_pending == 0 %}
+                                                Today
+                                            {% elif days_pending == 1 %}
+                                                Yesterday
+                                            {% else %}
+                                                {{ days_pending }} days ago
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td class="notes-cell">
+                                        {% if item.notes %}
+                                            <span class="notes-text" title="{{ item.notes }}">
+                                                {{ item.notes[:30] }}{% if item.notes|length > 30 %}...{% endif %}
+                                            </span>
+                                        {% else %}
+                                            <span class="no-notes">No notes</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            {% set amount = "₹%.2f"|format(item.pending_amount) %}
+                                            <button class="btn btn-sm btn-success" 
+                                                    data-id="{{ item.id }}" 
+                                                    data-product="{{ item.product_name }}" 
+                                                    data-total="{{ item.total_amount }}" 
+                                                    data-paid="{{ item.paid_amount }}" 
+                                                    data-pending="{{ item.pending_amount }}"
+                                                    onclick="showPaymentModal(this)">Make Payment</button>
+                                            <a href="{{ url_for('edit_product', id=item.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">💰</div>
+                        <h3>No Pending Payments</h3>
+                        <p>Great! All supplier payments have been settled.</p>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+                    </div>
+                {% endif %}
+            </section>
+            
+            <!-- Export Section -->
+            {% if pending_items %}
+            <section class="export-section">
+                <h2>📊 Export Reports</h2>
+                <div class="export-buttons">
+                    <a href="{{ url_for('export_pending_csv') }}" class="btn btn-secondary">
+                        <span>📋</span> Export Pending Payments CSV
+                    </a>
+                    <a href="{{ url_for('export_stock_csv') }}" class="btn btn-info">
+                        <span>📦</span> Export Full Stock CSV
+                    </a>
+                </div>
+            </section>
+            {% endif %}
+        </main>
+    </div>
+    
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Make Payment</h3>
+                <span class="close" onclick="closePaymentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="payment-info">
+                    <p><strong>Product:</strong> <span id="modalProductName"></span></p>
+                    <p><strong>Total Amount:</strong> ₹<span id="modalTotalAmount"></span></p>
+                    <p><strong>Already Paid:</strong> ₹<span id="modalPaidAmount"></span></p>
+                    <p><strong>Pending Amount:</strong> ₹<span id="modalPendingAmount"></span></p>
+                </div>
+                
+                <form id="paymentForm" onsubmit="processPayment(event)">
+                    <div class="form-group">
+                        <label for="paymentAmount">Enter Payment Amount:</label>
+                        <input type="number" id="paymentAmount" name="paymentAmount" required step="0.01" min="0.01" placeholder="Enter amount to pay">
+                    </div>
+                    
+                    <div class="payment-preview">
+                        <p><strong>New Paid Amount:</strong> ₹<span id="newPaidAmount">0.00</span></p>
+                        <p><strong>New Pending Amount:</strong> ₹<span id="newPendingAmount">0.00</span></p>
+                        <p id="paymentStatus" class="payment-status"></p>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-success">Process Payment</button>
+                        <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPaymentData = {};
+        
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('sidebar');
+        
+        mobileMenuBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+        });
+        
+        document.addEventListener('click', function(event) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+        
+        // Show payment modal
+        function showPaymentModal(button) {
+            currentPaymentData = {
+                id: parseInt(button.dataset.id),
+                productName: button.dataset.product,
+                totalAmount: parseFloat(button.dataset.total),
+                paidAmount: parseFloat(button.dataset.paid),
+                pendingAmount: parseFloat(button.dataset.pending)
+            };
+            
+            document.getElementById('modalProductName').textContent = currentPaymentData.productName;
+            document.getElementById('modalTotalAmount').textContent = currentPaymentData.totalAmount.toFixed(2);
+            document.getElementById('modalPaidAmount').textContent = currentPaymentData.paidAmount.toFixed(2);
+            document.getElementById('modalPendingAmount').textContent = currentPaymentData.pendingAmount.toFixed(2);
+            
+            document.getElementById('paymentAmount').value = '';
+            document.getElementById('paymentAmount').max = currentPaymentData.pendingAmount.toFixed(2);
+            updatePaymentPreview();
+            
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+        
+        // Close payment modal
+        function closePaymentModal() {
+            document.getElementById('paymentModal').style.display = 'none';
+        }
+        
+        // Update payment preview
+        function updatePaymentPreview() {
+            const paymentAmount = parseFloat(document.getElementById('paymentAmount').value) || 0;
+            const newPaidAmount = currentPaymentData.paidAmount + paymentAmount;
+            const newPendingAmount = Math.max(0, currentPaymentData.totalAmount - newPaidAmount);
+            
+            document.getElementById('newPaidAmount').textContent = newPaidAmount.toFixed(2);
+            document.getElementById('newPendingAmount').textContent = newPendingAmount.toFixed(2);
+            
+            const statusElement = document.getElementById('paymentStatus');
+            if (newPendingAmount <= 0) {
+                statusElement.textContent = '✅ Payment will be marked as PAID';
+                statusElement.className = 'payment-status paid';
+            } else {
+                statusElement.textContent = '⏳ Payment will remain PENDING';
+                statusElement.className = 'payment-status pending';
+            }
+        }
+        
+        // Process payment
+        function processPayment(event) {
+            event.preventDefault();
+            
+            const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+            const newPaidAmount = currentPaymentData.paidAmount + paymentAmount;
+            const newPendingAmount = Math.max(0, currentPaymentData.totalAmount - newPaidAmount);
+            
+            if (paymentAmount <= 0) {
+                alert('Please enter a valid payment amount.');
+                return;
+            }
+            
+            if (paymentAmount > currentPaymentData.pendingAmount) {
+                alert('Payment amount cannot exceed pending amount.');
+                return;
+            }
+            
+            // Send payment data to server
+            fetch(`/process_payment/${currentPaymentData.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    paymentAmount: paymentAmount,
+                    newPaidAmount: newPaidAmount,
+                    newPendingAmount: newPendingAmount,
+                    isFullyPaid: newPendingAmount <= 0
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Payment processed successfully!');
+                    closePaymentModal();
+                    location.reload(); // Refresh the page to show updated data
+                } else {
+                    alert('Error processing payment: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error processing payment. Please try again.');
+            });
+        }
+        
+        // Payment amount input listener
+        document.getElementById('paymentAmount').addEventListener('input', updatePaymentPreview);
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('paymentModal');
+            if (event.target == modal) {
+                closePaymentModal();
+            }
+        }
+        
+        // Show supplier details
+        function showSupplierDetails(supplierName) {
+            const rows = document.querySelectorAll('.pending-row');
+            rows.forEach(row => {
+                if (row.dataset.supplier === supplierName) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Show all button
+            const table = document.querySelector('.pending-payments');
+            const showAllBtn = document.createElement('button');
+            showAllBtn.className = 'btn btn-secondary';
+            showAllBtn.textContent = 'Show All';
+            showAllBtn.onclick = () => {
+                rows.forEach(row => row.style.display = '');
+                showAllBtn.remove();
+            };
+            
+            // Remove existing show all button if any
+            const existingBtn = table.querySelector('.btn-secondary');
+            if (existingBtn) {
+                existingBtn.remove();
+            }
+            
+            table.insertBefore(showAllBtn, table.querySelector('h2').nextSibling);
+        }
+        
+        // Sort table functionality
+        let sortDirection = {};
+        
+        function sortTable(columnIndex) {
+            const table = document.querySelector('.pending-table');
+            const tbody = table.getElementsByTagName('tbody')[0];
+            const rows = Array.from(tbody.getElementsByTagName('tr'));
+            
+            // Toggle sort direction
+            sortDirection[columnIndex] = sortDirection[columnIndex] === 'asc' ? 'desc' : 'asc';
+            
+            rows.sort((a, b) => {
+                let aValue = a.getElementsByTagName('td')[columnIndex].textContent.trim();
+                let bValue = b.getElementsByTagName('td')[columnIndex].textContent.trim();
+                
+                // Handle numeric values
+                if (columnIndex === 2 || columnIndex === 3 || columnIndex === 5) {
+                    aValue = parseFloat(aValue.replace('₹', '').replace(',', '')) || 0;
+                    bValue = parseFloat(bValue.replace('₹', '').replace(',', '')) || 0;
+                }
+                
+                if (sortDirection[columnIndex] === 'asc') {
+                    return aValue > bValue ? 1 : -1;
+                } else {
+                    return aValue < bValue ? 1 : -1;
+                }
+            });
+            
+            // Reorder rows in DOM
+            rows.forEach(row => tbody.appendChild(row));
+        }
+        
+        // Calculate days since purchase (this would normally be done in backend)
+        function calculateDaysSincePurchase(purchaseDate) {
+            const purchase = new Date(purchaseDate);
+            const today = new Date();
+            const diffTime = today - purchase;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        }
+    </script>
+</body>
+</html>
